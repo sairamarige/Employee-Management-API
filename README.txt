@@ -38,7 +38,7 @@ Fastapi-store-management/
 ├── models.py        # SQLAlchemy ORM models
 ├── schemas.py       # Pydantic schemas
 ├── README.md
-
+|-- requirements.txt
 
 
 ⚙️ Installation:
