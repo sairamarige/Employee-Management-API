@@ -1,10 +1,13 @@
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 from sqlalchemy.orm import sessionmaker,declarative_base
 
-# DATABASE_URL="mysql+pymysql://root:1234@localhost:3306/store_db"
-DATABASE_URL="mysql+pymysql://avnadmin:AVNS_ltzGQHRHtNxWPlp03iq@mysql-1d69e83f-sairamarige2140-f01e.c.aivencloud.com:16747/defaultdb"
 
+load_dotenv()
+
+DATABASE_URL=os.getenv("DB_URL")
 engine=create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
