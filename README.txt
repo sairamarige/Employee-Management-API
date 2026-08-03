@@ -1,242 +1,124 @@
-🛍️ FastAPI Store Management 
+Employee Management API
+========================
 
-A RESTful Store Management API built with FastAPI, SQLAlchemy, and MySQL. This project demonstrates how to build a scalable backend application using clean architecture while implementing complete CRUD (Create, Read, Update, Delete) operations for multiple product categories.
+A FastAPI + SQLAlchemy backend for managing employee records, with
+role-based access control (intern / dev / manager).
 
 
+Project Files
+--------------
+main.py        - FastAPI app and route definitions
+models.py      - SQLAlchemy ORM models (Employee, User)
+schemas.py     - Pydantic request/response schemas
+crud.py        - Database operations + auth helpers (hashing, JWT)
+auth.py        - JWT decoding + role-based access dependencies
+database.py    - DB engine/session setup (create this yourself, see below)
+requirements.txt - Python package dependencies
 
-🚀 Features:
 
-- RESTful API built with FastAPI
-- SQLAlchemy ORM for database operations
-- MySQL database integration using PyMySQL
-- Pydantic models for request and response validation
-- Complete CRUD operations
-- Automatic interactive API documentation (Swagger UI)
-- Modular project structure for easy maintenance
+Roles & Permissions
+--------------------
+Every user has a role: intern, dev, or manager.
 
+  intern   -> GET only
+  dev      -> GET, POST, PUT, PATCH
+  manager  -> GET, POST, PUT, PATCH, DELETE
 
+Role is checked from the JWT cookie set at login.
 
-🛠️ Tech Stack:
 
-- Python
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- MySQL
-- PyMySQL
-- Uvicorn
+Setup Instructions
+--------------------
 
+1. Create a virtual environment
 
+   python -m venv venv
 
-📁 Project Structure:
+   Activate it:
+     Windows:      venv\Scripts\activate
+     macOS/Linux:  source venv/bin/activate
 
-Fastapi-store-management/
-│
-├── main.py          # FastAPI application and API routes
-├── crud.py          # CRUD database operations
-├── database.py      # Database connection and session
-├── models.py        # SQLAlchemy ORM models
-├── schemas.py       # Pydantic schemas
-├── README.md
-|-- requirements.txt
+2. Install dependencies
 
+   pip install -r requirements.txt
 
-⚙️ Installation:
+3. Create database.py (if you don't already have one)
 
-1. Clone the Repository:
+   from sqlalchemy import create_engine
+   from sqlalchemy.orm import sessionmaker, declarative_base
+   import os
+   from dotenv import load_dotenv
 
-bash
-git clone https://github.com/Asairam21/Fastapi-store-management.git
-cd Fastapi-store-management
+   load_dotenv()
 
+   DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://user:password@localhost/employee_db")
 
-2. Create Virtual Environment:
+   engine = create_engine(DATABASE_URL)
+   SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+   Base = declarative_base()
 
-Windows:
-python -m venv venv
-venv\Scripts\activate
+   If you don't have MySQL set up, use SQLite instead (no server needed):
 
+   DATABASE_URL = "sqlite:///./employee.db"
 
-Linux / macOS:
-python3 -m venv venv
-source venv/bin/activate
+   (and remove PyMySQL-specific parts if you go this route)
 
+4. Create a .env file in the project root
 
-3. Install Dependencies:
+   DATABASE_URL=mysql+pymysql://your_mysql_user:your_mysql_password@localhost/employee_db
+   SECRET_KEY=replace-this-with-a-long-random-string
 
-pip install fastapi uvicorn sqlalchemy pymysql
+   If using MySQL, create the database first:
+     CREATE DATABASE employee_db;
 
+5. Run the server
 
+   python -m uvicorn main:app --reload
 
-🗄️ Database Configuration:
+   (Use "python -m uvicorn" instead of just "uvicorn" if the standalone
+   uvicorn.exe launcher gets blocked by an Application Control / AppLocker
+   policy on your machine.)
 
-Create a MySQL database named:
+6. Open the interactive docs
 
-store_db
+   http://127.0.0.1:8000/docs
 
 
-Update your "database.py" file with your MySQL credentials.
+Basic Usage
+--------------------
 
-DATABASE_URL = "mysql+pymysql://username:password@localhost:3306/store_db"
+Register a user:
+  POST /register_user
+  { "username": "...", "password": "...", "email": "...", "role": "manager" }
 
+Log in (sets an access_token cookie):
+  POST /login
+  { "email": "...", "password": "..." }
 
+Then use the other endpoints (/employees, /department/{name}, etc.)
+The cookie from login determines what your role is allowed to do.
 
 
-▶️ Run the Application:
 
-bash
-uvicorn main:app --reload
 
 
-Server:
-http://127.0.0.1:8000
 
-Swagger UI:
-http://127.0.0.1:8000/docs
 
-ReDoc:
-http://127.0.0.1:8000/redoc
 
 
 
-📦 API Resources:
-The project manages five product categories.
 
-| Resource | Endpoint |
-|----------|----------|
-| Laptops | "/laptops" |
-| Mobiles | "/mobiles" |
-| Food Menu | "/food-menu" |
-| Furniture | "/furniture" |
-| Grocery | "/grocery" |
 
 
 
-CRUD Endpoints:
-Each resource supports the following endpoints.
 
-Create:
-POST /resource
 
 
-Get All:
-GET /resource
 
 
-Get by ID:
-GET /resource/{id}
 
 
-Update:
-PUT /resource/{id}
 
 
-Delete:
-DELETE /resource/{id}
 
 
-Example:
-
-```
-POST   /laptops
-GET    /laptops
-GET    /laptops/1
-PUT    /laptops/1
-DELETE /laptops/1
-```
-
-The same pattern applies to:
-
-- "/mobiles"
-- "/food-menu"
-- "/furniture"
-- "/grocery"
-
-
-
-📋 Data Models:
-
-💻 Laptop
-
-| Field | Type |
-|-------|------|
-| brand | string |
-| model | string |
-| price | integer |
-| ram_gb | integer |
-
-
-📱 Mobile
-
-| Field | Type |
-|-------|------|
-| brand | string |
-| model | string |
-| price | integer |
-| storage_gb | integer |
-
-
-🍔 Food Menu:
-
-| Field | Type |
-|-------|------|
-| item_name | string |
-| category | string |
-| price | integer |
-| calories | integer |
-
-
-🪑 Furniture:
-
-| Field | Type |
-|-------|------|
-| name | string |
-| material | string |
-| price | integer |
-| dimensions | string |
-
-🛒 Grocery:
-
-| Field | Type |
-|-------|------|
-| item_name | string |
-| category | string |
-| price | integer |
-| quantity | integer |
-
-
-
-🧪 Testing:
-
-After running the application, open:
-http://127.0.0.1:8000/docs
-
-Use the interactive Swagger UI to test all API endpoints.
-
-
-
-🎯 Learning Outcomes
-
-This project helped me understand:
-
-- Building REST APIs with FastAPI
-- Designing scalable backend applications
-- SQLAlchemy ORM
-- Database CRUD operations
-- Request validation with Pydantic
-- MySQL integration
-- API documentation using Swagger UI
-- Clean project architecture
-
-
-
-📜 License:
-This project is open source and available under the MIT License.
-
-
-
-👨‍💻 Author
-
- Sai Ram
-
-If you found this project helpful, consider giving it a ⭐ on GitHub.
