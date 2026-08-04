@@ -1,121 +1,121 @@
+from fastapi import FastAPI, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-import models
-import schemas
-import bcrypt
-import jwt
-from fastapi import Response
+import crud, schemas
+from database import Base, engine, SessionLocal
+import auth
 
-SECRET_KEY = "abcdefghijklmnopqrtuvwxyz"
-ALGORITHM = "HS256"
+Base.metadata.create_all(bind=engine)
 
-
-def create_employee(db: Session, employee: schemas.EmployeeCreate):
-    db_employee = models.Employee(**employee.model_dump())
-    db.add(db_employee)
-    db.commit()
-    db.refresh(db_employee)
-    return db_employee
+app = FastAPI()
 
 
-def get_employees(db: Session):
-    return db.query(models.Employee).all()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-def get_employee(db: Session, employee_id: int):
-    return db.query(models.Employee).filter(
-        models.Employee.id == employee_id
-    ).first()
+@app.get("/")
+def welcome():
+    return "welcome to employee management portal!"
 
 
-def get_by_department(db: Session, department: str):
-    return db.query(models.Employee).filter(
-        models.Employee.department == department
-    ).all()
+@app.get("/employees", response_model=list[schemas.EmployeeResponse])
+def read_all(
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_get)
+):
+    return crud.get_employees(db)
 
 
-def update_employee(db: Session, employee_id: int, employee: schemas.EmployeeCreate):
-    db_employee = get_employee(db, employee_id)
-    if not db_employee:
-        return None
-    db_employee.name = employee.name
-    db_employee.age = employee.age
-    db_employee.department = employee.department
-    db_employee.email = employee.email
-    db.commit()
-    db.refresh(db_employee)
-    return db_employee
+@app.post("/employees", response_model=schemas.EmployeeResponse)
+def create(
+    employee: schemas.EmployeeCreate,
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_write)
+):
+    return crud.create_employee(db, employee)
 
 
-def patch_employee(db: Session, employee_id: int, fields: dict):
-    db_employee = get_employee(db, employee_id)
-    if not db_employee:
-        return None
-    for key, value in fields.items():
-        setattr(db_employee, key, value)
-    db.commit()
-    db.refresh(db_employee)
-    return db_employee
+@app.get("/employees/{employee_id}", response_model=schemas.EmployeeResponse)
+def read_one(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_get)
+):
+    employee = crud.get_employee(db, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return employee
 
 
-def delete_employee(db: Session, employee_id: int):
-    db_employee = get_employee(db, employee_id)
-    if not db_employee:
-        return None
-    db.delete(db_employee)
-    db.commit()
-    return db_employee
+@app.put("/employees/{employee_id}", response_model=schemas.EmployeeResponse)
+def update(
+    employee_id: int,
+    employee: schemas.EmployeeCreate,
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_write)
+):
+    updated = crud.update_employee(db, employee_id, employee)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return updated
 
 
-def create_user(user: schemas.UserCreate, db: Session):
-    # If an employee_id was given, make sure it actually points to a real
-    # employee, and that employee doesn't already have a login account.
-    if user.employee_id is not None:
-        employee = get_employee(db, user.employee_id)
-        if not employee:
-            return {"error": "No employee found with that employee_id"}
-        existing_link = db.query(models.User).filter(
-            models.User.employee_id == user.employee_id
-        ).first()
-        if existing_link:
-            return {"error": "This employee already has a login account"}
-
-    hashed = bcrypt.hashpw(
-        user.password.encode(),  # input should be in bytes
-        bcrypt.gensalt(rounds=14)
-    ).decode("utf-8")
-
-    new_user = models.User(
-        username=user.username,
-        email=user.email,
-        hashed_password=hashed,
-        role=user.role,
-        employee_id=user.employee_id
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    return new_user
+@app.patch("/employees/{employee_id}", response_model=schemas.EmployeeResponse)
+def patch(
+    employee_id: int,
+    employee: schemas.EmployeeUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_write)
+):
+    fields = employee.model_dump(exclude_unset=True)
+    patched = crud.patch_employee(db, employee_id, fields)
+    if not patched:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return patched
 
 
-def validate_user(user: schemas.UserLogin, db: Session, response: Response):
-    user_exist = db.query(models.User).filter(models.User.email == user.email).first()
-    if not user_exist:
-        return "no user found"
+@app.delete("/employees/{employee_id}")
+def delete(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_delete)
+):
+    deleted = crud.delete_employee(db, employee_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return {"message": "Employee deleted successfully"}
 
-    is_same = bcrypt.checkpw(user.password.encode(), user_exist.hashed_password.encode())
-    if is_same:
-        payload = {
-            "name": user_exist.username,
-            "email": user_exist.email,
-            "role": user_exist.role
-        }
-        token = jwt.encode(payload, SECRET_KEY, ALGORITHM)
-        response.set_cookie(key="access_token", value=token)
-        return "login successful!"
 
-    return "invalid credentials"
+@app.get("/department/{department_name}", response_model=list[schemas.EmployeeResponse])
+def department_employees(
+    department_name: str,
+    db: Session = Depends(get_db),
+    user=Depends(auth.allow_get)
+):
+    employee_list = crud.get_by_department(db, department_name)
+    if not employee_list:
+        raise HTTPException(status_code=404, detail="No employees found in this department!")
+    return employee_list
+
+
+@app.post("/register_user", response_model=schemas.UserResponse)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    result = crud.create_user(user, db)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/login")
+def login_user(response: Response, user: schemas.UserLogin, db: Session = Depends(get_db)):
+    return crud.validate_user(user, db, response)
+      
+
+  
 
    
 
