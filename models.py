@@ -1,52 +1,33 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
 
-class Laptop(Base):
-    __tablename__ = "laptops"
-
-    id = Column(Integer, primary_key=True, index=True)
-    brand = Column(String(100), nullable=False)
-    model = Column(String(100), nullable=False)
-    price = Column(Integer, nullable=False)
-    ram_gb = Column(Integer, nullable=False)
-
-
-class Mobile(Base):
-    __tablename__ = "mobiles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    brand = Column(String(100), nullable=False)
-    model = Column(String(100), nullable=False)
-    price = Column(Integer, nullable=False)
-    storage_gb = Column(Integer, nullable=False)
-
-
-class FoodMenu(Base):
-    __tablename__ = "food_menu"
-
-    id = Column(Integer, primary_key=True, index=True)
-    item_name = Column(String(100), nullable=False)
-    category = Column(String(50), nullable=False)
-    price = Column(Integer, nullable=False)
-    calories = Column(Integer, nullable=False)
-
-
-class Furniture(Base):
-    __tablename__ = "furniture"
+class Employee(Base):
+    __tablename__ = "employees"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    material = Column(String(100), nullable=False)
-    price = Column(Integer, nullable=False)
-    dimensions = Column(String(50), nullable=False)
+    age = Column(Integer, nullable=False)
+    department = Column(String(100), nullable=False)
+    email = Column(String(50), unique=True, nullable=True)
+
+    # One employee can have one login account (optional - not every employee
+    # necessarily gets a login, and not every user is necessarily an employee).
+    user = relationship("User", back_populates="employee", uselist=False)
 
 
-class Grocery(Base):
-    __tablename__ = "grocery"
+class User(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_name = Column(String(100), nullable=False)
-    category = Column(String(50), nullable=False)
-    price = Column(Integer, nullable=False)
-    quantity = Column(Integer, nullable=False)
+    username = Column(String(100), nullable=False)
+    hashed_password = Column(String(300), nullable=False)
+    role = Column(String(20), nullable=False, default="intern")  # intern | dev | manager
+    is_active = Column(Boolean, default=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+
+    # Links this login account to an employee record (nullable - lets you
+    # still create staff accounts, e.g. a manager, with no employee row).
+    employee_id = Column(Integer, ForeignKey("employees.id"), unique=True, nullable=True)
+    employee = relationship("Employee", back_populates="user")
