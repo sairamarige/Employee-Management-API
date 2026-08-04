@@ -67,6 +67,18 @@ def delete_employee(db: Session, employee_id: int):
 
 
 def create_user(user: schemas.UserCreate, db: Session):
+    # If an employee_id was given, make sure it actually points to a real
+    # employee, and that employee doesn't already have a login account.
+    if user.employee_id is not None:
+        employee = get_employee(db, user.employee_id)
+        if not employee:
+            return {"error": "No employee found with that employee_id"}
+        existing_link = db.query(models.User).filter(
+            models.User.employee_id == user.employee_id
+        ).first()
+        if existing_link:
+            return {"error": "This employee already has a login account"}
+
     hashed = bcrypt.hashpw(
         user.password.encode(),  # input should be in bytes
         bcrypt.gensalt(rounds=14)
@@ -76,7 +88,8 @@ def create_user(user: schemas.UserCreate, db: Session):
         username=user.username,
         email=user.email,
         hashed_password=hashed,
-        role=user.role
+        role=user.role,
+        employee_id=user.employee_id
     )
 
     db.add(new_user)
@@ -103,6 +116,12 @@ def validate_user(user: schemas.UserLogin, db: Session, response: Response):
         return "login successful!"
 
     return "invalid credentials"
+
+    
+
+    
+
+   
 
    
    
