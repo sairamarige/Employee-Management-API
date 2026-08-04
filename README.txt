@@ -1,8 +1,14 @@
+
+
+   
 Employee Management API
 ========================
 
-A FastAPI + SQLAlchemy backend for managing employee records, with
-role-based access control (intern / dev / manager).
+A backend REST API built with FastAPI and SQLAlchemy for managing
+employee records. Features JWT-based authentication and role-based
+access control with three permission tiers - interns (read-only),
+developers (read/write), and managers (full access including delete).
+Includes optional linking between login accounts and employee records.
 
 
 Project Files
@@ -97,6 +103,31 @@ Log in (sets an access_token cookie):
 
 Then use the other endpoints (/employees, /department/{name}, etc.)
 The cookie from login determines what your role is allowed to do.
+
+
+Troubleshooting
+--------------------
+
+"Class ... does not have a __table__ or __tablename__ specified"
+  Your models.py is missing a __tablename__ = "..." line inside a
+  model class. Check indentation - it must be the first line inside
+  the class body.
+
+NameError involving Boolean
+  Make sure your models.py imports Boolean:
+  from sqlalchemy import Column, Integer, String, Boolean
+
+model_config not working / Pydantic errors
+  model_config = {...} is Pydantic v2 syntax. Confirm you actually
+  installed pydantic v2 with: pip show pydantic
+  (requirements.txt pins pydantic==2.13.4)
+
+"Application Control policy has blocked this file" when running uvicorn
+  Run it as a module instead of the standalone executable:
+  python -m uvicorn main:app --reload
+
+
+
 
 
 
